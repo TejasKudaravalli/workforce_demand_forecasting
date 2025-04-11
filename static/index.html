@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demand - Workers Forecasting</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-4xl">
+        <h1 class="text-2xl font-bold text-center mb-6 text-gray-800">Demand Forecast & Staffing</h1>
+
+        <div class="mb-6">
+            <!-- File upload dropzone - shown when no file is selected -->
+            <div id="dropZone" class="flex items-center justify-center w-full">
+                <label
+                    class="flex flex-col w-full h-32 border-4 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 cursor-pointer">
+                    <div class="flex flex-col items-center justify-center pt-7">
+                        <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                            </path>
+                        </svg>
+                        <p class="pt-1 text-sm text-gray-500">Upload Excel File</p>
+                        <p class="text-xs text-gray-400">.xlsx or .xls</p>
+                    </div>
+                    <input id="fileInput" type="file" class="hidden" accept=".xlsx, .xls" />
+                </label>
+            </div>
+
+            <!-- Selected file display - shown when file is selected -->
+            <div id="selectedFileDisplay" class="hidden w-full">
+                <div class="flex items-center justify-between p-4 border border-gray-300 rounded-lg bg-blue-50">
+                    <div class="flex items-center">
+                        <svg class="w-8 h-8 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                            </path>
+                        </svg>
+                        <div>
+                            <p id="selectedFileName" class="font-medium text-blue-700 truncate max-w-xs"></p>
+                            <p id="selectedFileSize" class="text-xs text-blue-500"></p>
+                        </div>
+                    </div>
+                    <button id="removeFileBtn" class="text-gray-500 hover:text-red-500 focus:outline-none"
+                        aria-label="Remove file">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <button id="uploadButton"
+                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50"
+                disabled>
+                Begin Forecasting
+            </button>
+        </div>
+
+        <!-- Tabs Section -->
+        <div id="tabsContainer" class="hidden mt-6">
+            <div class="border-b border-gray-200">
+                <ul class="flex -mb-px">
+                    <li class="mr-1">
+                        <button id="tabResults"
+                            class="inline-block py-2 px-4 font-medium rounded-t-lg text-blue-600 border-b-2 border-blue-600 active"
+                            onclick="switchTab('results')">Results</button>
+                    </li>
+                    <li class="mr-1">
+                        <button id="tabInsample"
+                            class="inline-block py-2 px-4 font-medium rounded-t-lg text-gray-500 hover:text-gray-600 hover:border-gray-300 border-b-2 border-transparent"
+                            onclick="switchTab('insample')">Insample Fit</button>
+                    </li>
+                    <li class="mr-1">
+                        <button id="tabFuture"
+                            class="inline-block py-2 px-4 font-medium rounded-t-lg text-gray-500 hover:text-gray-600 hover:border-gray-300 border-b-2 border-transparent"
+                            onclick="switchTab('future')">Future Forecast</button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Results Tab Content -->
+            <div id="resultsTab" class="tab-content">
+                <div class="flex justify-end mb-2 mt-4">
+                    <button id="downloadCSV"
+                        class="flex items-center bg-green-500 hover:bg-green-600 text-white font-medium py-1 px-3 rounded text-sm">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Download CSV
+                    </button>
+                </div>
+
+                <div class="overflow-y-auto max-h-80 border border-gray-200 rounded-lg">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-gray-100 sticky top-0">
+                            <tr>
+                                <th
+                                    class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                                    Month</th>
+                                <th
+                                    class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                                    Forecasted Demand</th>
+                                <th
+                                    class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                                    Workers Required</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultTableBody">
+                            <!-- Table rows will be dynamically populated here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-4 text-center text-sm text-gray-500">
+                    <span id="rowCount">0</span> rows found in the data
+                </div>
+            </div>
+
+            <!-- Insample Fit Tab Content -->
+            <div id="insampleTab" class="tab-content hidden">
+                <div class="mt-4 p-2 bg-white border border-gray-200 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700">Insample Fit Comparison</h3>
+                    <div class="h-80">
+                        <canvas id="insampleChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Future Fit Tab Content -->
+            <div id="futureTab" class="tab-content hidden">
+                <div class="mt-4 p-2 bg-white border border-gray-200 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700">Future Forecast Comparison</h3>
+                    <div class="h-80">
+                        <canvas id="futureChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorMessage" class="hidden mt-4 p-3 bg-red-100 text-red-700 rounded-md text-sm"></div>
+
+        <div id="loadingIndicator" class="hidden mt-4 flex justify-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const fileInput = document.getElementById('fileInput');
+            const uploadButton = document.getElementById('uploadButton');
+            const tabsContainer = document.getElementById('tabsContainer');
+            const resultTableBody = document.getElementById('resultTableBody');
+            const rowCount = document.getElementById('rowCount');
+            const errorMessage = document.getElementById('errorMessage');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const dropZone = document.getElementById('dropZone');
+            const selectedFileDisplay = document.getElementById('selectedFileDisplay');
+            const selectedFileName = document.getElementById('selectedFileName');
+            const selectedFileSize = document.getElementById('selectedFileSize');
+            const removeFileBtn = document.getElementById('removeFileBtn');
+            const downloadCSV = document.getElementById('downloadCSV');
+
+            // Chart instances
+            let insampleChart = null;
+            let futureChart = null;
+
+            fileInput.addEventListener('change', function () {
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    displaySelectedFile(file);
+                    uploadButton.disabled = false;
+                } else {
+                    resetFileSelection();
+                }
+
+                // Hide previous results and errors
+                tabsContainer.classList.add('hidden');
+                errorMessage.classList.add('hidden');
+            });
+
+            // Function to display selected file
+            function displaySelectedFile(file) {
+                // Show file name and size
+                selectedFileName.textContent = file.name;
+
+                // Format file size
+                let size = '';
+                if (file.size < 1024) {
+                    size = file.size + ' bytes';
+                } else if (file.size < 1024 * 1024) {
+                    size = (file.size / 1024).toFixed(2) + ' KB';
+                } else {
+                    size = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+                }
+                selectedFileSize.textContent = size;
+
+                // Show selected file display and hide dropzone
+                dropZone.classList.add('hidden');
+                selectedFileDisplay.classList.remove('hidden');
+            }
+
+            // Function to reset file selection
+            function resetFileSelection() {
+                fileInput.value = '';
+                uploadButton.disabled = true;
+                dropZone.classList.remove('hidden');
+                selectedFileDisplay.classList.add('hidden');
+            }
+
+            // Remove file button event
+            removeFileBtn.addEventListener('click', function () {
+                resetFileSelection();
+            });
+
+            // Drag and drop functionality
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight() {
+                dropZone.querySelector('label').classList.add('bg-gray-50', 'border-gray-400');
+            }
+
+            function unhighlight() {
+                dropZone.querySelector('label').classList.remove('bg-gray-50', 'border-gray-400');
+            }
+
+            dropZone.addEventListener('drop', handleDrop, false);
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    const file = files[0];
+
+                    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                        displaySelectedFile(file);
+                        uploadButton.disabled = false;
+                    } else {
+                        showError("Please select an Excel file (.xlsx or .xls)");
+                    }
+                }
+            }
+
+            // Tab switching functionality
+            window.switchTab = function (tabName) {
+                // Hide all tab contents
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.classList.add('hidden');
+                });
+
+                // Remove active class from all tab buttons
+                document.querySelectorAll('#tabsContainer button').forEach(button => {
+                    button.classList.remove('text-blue-600', 'border-blue-600');
+                    button.classList.add('text-gray-500', 'border-transparent');
+                });
+
+                // Show selected tab content and highlight button
+                document.getElementById(tabName + 'Tab').classList.remove('hidden');
+                document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('text-blue-600', 'border-blue-600');
+                document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.remove('text-gray-500', 'border-transparent');
+            }
+
+            uploadButton.addEventListener('click', async function () {
+                if (fileInput.files.length === 0) return;
+
+                const file = fileInput.files[0];
+
+                // Check file type
+                if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+                    showError("Please select an Excel file (.xlsx or .xls)");
+                    return;
+                }
+
+                // Create FormData
+                const formData = new FormData();
+                formData.append('file', file);
+
+                // Show loading indicator
+                loadingIndicator.classList.remove('hidden');
+                errorMessage.classList.add('hidden');
+                tabsContainer.classList.add('hidden');
+
+                try {
+                    const response = await fetch('/upload/', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        // Display the results
+                        displayResultTable(data);
+
+                        // Initialize and render charts
+                        initializeCharts(data);
+
+                        // Show the tabs container
+                        tabsContainer.classList.remove('hidden');
+
+                        // Default to Results tab
+                        switchTab('results');
+                    } else {
+                        // Show error message
+                        showError(data.detail || "Error processing the file");
+                    }
+                } catch (error) {
+                    showError("Network error or server is not responding");
+                } finally {
+                    // Hide loading indicator
+                    loadingIndicator.classList.add('hidden');
+                }
+            });
+
+            function displayResultTable(data) {
+                // Clear previous results
+                resultTableBody.innerHTML = '';
+
+                // Get the data arrays
+                const dates = data.dates || [];
+                const demand = data.demand || [];
+                const workers = data.workers || [];
+
+                // Determine the number of rows (should be the same for all arrays)
+                const rowsCount = Math.max(dates.length, demand.length, workers.length);
+
+                // Update row count display
+                rowCount.textContent = rowsCount;
+
+                // Generate table rows
+                for (let i = 0; i < rowsCount; i++) {
+                    const row = document.createElement('tr');
+                    row.className = i % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+
+                    // Date cell
+                    const dateCell = document.createElement('td');
+                    dateCell.className = 'py-2 px-4 border-b text-sm text-gray-700';
+                    dateCell.textContent = i < dates.length ? dates[i] : '';
+                    row.appendChild(dateCell);
+
+                    // Demand cell
+                    const demandCell = document.createElement('td');
+                    demandCell.className = 'py-2 px-4 border-b text-sm text-gray-700';
+                    demandCell.textContent = i < demand.length ? demand[i] : '';
+                    row.appendChild(demandCell);
+
+                    // Workers cell
+                    const workersCell = document.createElement('td');
+                    workersCell.className = 'py-2 px-4 border-b text-sm text-gray-700';
+                    workersCell.textContent = i < workers.length ? workers[i] : '';
+                    row.appendChild(workersCell);
+
+                    resultTableBody.appendChild(row);
+                }
+            }
+
+            function initializeCharts(data) {
+                // Assuming the API response includes insample and future forecast data
+                const insampleData = {
+                    dates: data.insample.dates || [],
+                    actual: data.insample.Actual || [],
+                    sarima: data.insample.SARIMA || [],
+                    prophet: data.insample.Prophet || [],
+                    holt_winters: data.insample.Holt_Winters || [],
+                    combined: data.insample.Combined || []
+                };
+
+                const futureData = {
+                    dates: data.future.dates || [],
+                    sarima: data.future.SARIMA || [],
+                    prophet: data.future.Prophet || [],
+                    holt_winters: data.future.Holt_Winters || [],
+                    combined: data.future.Combined || []
+                };
+
+                // Destroy previous chart instances if they exist
+                if (insampleChart) insampleChart.destroy();
+                if (futureChart) futureChart.destroy();
+
+                // Initialize Insample Chart
+                const insampleCtx = document.getElementById('insampleChart').getContext('2d');
+                insampleChart = new Chart(insampleCtx, {
+                    type: 'line',
+                    data: {
+                        labels: insampleData.dates,
+                        datasets: [
+                            {
+                                label: 'Actual',
+                                data: insampleData.actual,
+                                borderColor: 'rgb(0, 0, 0)',
+                                tension: 0.1,
+                                pointRadius: 0,
+                                borderWidth: 2,
+                                fill: false
+                            },
+                            {
+                                label: 'SARIMA',
+                                data: insampleData.sarima,
+                                borderColor: 'rgb(255, 99, 132)',
+                                pointRadius: 0,
+                                borderWidth: 1.0,
+                                tension: 0.1,
+                                fill: false
+                            },
+                            {
+                                label: 'Prophet',
+                                data: insampleData.prophet,
+                                borderColor: 'rgb(54, 162, 235)',
+                                pointRadius: 0,
+                                borderWidth: 1.0,
+                                tension: 0.1,
+                                fill: false
+                            },
+                            {
+                                label: 'Holt-Winters',
+                                data: insampleData.holt_winters,
+                                borderColor: 'rgb(255, 159, 64)',
+                                pointRadius: 0,
+                                borderWidth: 1.0,
+                                tension: 0.1,
+                                fill: false
+                            },
+                            {
+                                label: 'Combined',
+                                data: insampleData.combined,
+                                borderColor: 'rgb(75, 192, 192)',
+                                pointRadius: 0,
+                                borderWidth: 2.0,
+                                tension: 0.1,
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            // title: {
+                            //     display: true,
+                            //     text: 'Model Insample Fit Comparison'
+                            // },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Demand'
+                                },
+                                ticks: {
+                                    callback: function (value, index, values) {
+                                        return formatNumber(value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Initialize Future Chart
+                const futureCtx = document.getElementById('futureChart').getContext('2d');
+                futureChart = new Chart(futureCtx, {
+                    type: 'line',
+                    data: {
+                        labels: futureData.dates,
+                        datasets: [
+                            {
+                                label: 'SARIMA',
+                                data: futureData.sarima,
+                                borderColor: 'rgb(255, 99, 132)',
+                                tension: 0.1,
+                                pointRadius: 0,
+                                borderWidth: 1.5,
+                                fill: false
+                            },
+                            {
+                                label: 'Prophet',
+                                data: futureData.prophet,
+                                borderColor: 'rgb(54, 162, 235)',
+                                pointRadius: 0,
+                                borderWidth: 1.5,
+                                tension: 0.1,
+                                fill: false
+                            },
+                            {
+                                label: 'Holt-Winters',
+                                data: futureData.holt_winters,
+                                borderColor: 'rgb(255, 159, 64)',
+                                pointRadius: 0,
+                                borderWidth: 1.5,
+                                tension: 0.1,
+                                fill: false
+                            },
+                            {
+                                label: 'Combined',
+                                data: futureData.combined,
+                                borderColor: 'rgb(75, 192, 192)',
+                                pointRadius: 0,
+                                borderWidth: 2.0,
+                                tension: 0.1,
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            // title: {
+                            //     display: true,
+                            //     text: 'Future Forecast Comparison'
+                            // },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Forecasted Demand'
+                                },
+                                ticks: {
+                                    callback: function (value, index, values) {
+                                        return formatNumber(value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                function formatNumber(value) {
+                    const absValue = Math.abs(value);
+                    if (absValue >= 1000000) {
+                        return (value / 1000000).toFixed(1) + 'M';
+                    } else if (absValue >= 1000) {
+                        return (value / 1000).toFixed(1) + 'K';
+                    }
+                    return value;
+                }
+            }
+
+            // Download CSV functionality
+            downloadCSV.addEventListener('click', function () {
+                const rows = document.querySelectorAll('#resultTableBody tr');
+                const csvContent = [
+                    ['Month', 'Forecasted Demand', 'Workers Required'],
+                    ...Array.from(rows).map(row => {
+                        return Array.from(row.cells).map(cell => cell.textContent);
+                    })
+                ]
+                    .map(e => e.join(','))
+                    .join('\n');
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'demand_forecast_results.csv');
+                link.style.visibility = 'hidden';
+
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+
+</html>

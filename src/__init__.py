@@ -1,0 +1,1 @@
+from .forecasting import get_result as forecast_demand_workers
