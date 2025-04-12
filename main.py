@@ -7,41 +7,6 @@ import plotly.graph_objects as go
 
 st.set_page_config(layout="centered", page_title="Demand - Workers Forecasting")
 
-st.markdown("""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-
-        html, body, [class*="css"], .st-ae, .st-af, .st-ag, .st-ah, .st-ai, .st-aj, .st-ak, .st-al,
-        h1, h2, h3, h4, h5, h6, .stTabs [data-baseweb="tab-list"], .stTabs [data-baseweb="tab"],
-        button, .streamlit-expanderHeader, p, div, span {
-            font-family: 'Inter', sans-serif !important;
-        }
-        
-        /* Specific styling for title */
-        h1 {
-            font-weight: 700 !important;
-            color: #111827 !important;
-        }
-        
-        /* Tab styling */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 8px;
-        }
-        
-        .stTabs [data-baseweb="tab"] {
-            height: 40px;
-            border-radius: 4px 4px 0 0;
-            padding: 10px 16px;
-            font-weight: 600;
-        }
-        
-        /* Background color */
-        .stApp {
-            background-color: #fffff;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
 st.markdown("<h1 style='text-align: center;'>Demand Forecast & Staffing</h1>", unsafe_allow_html=True)
 
 
@@ -87,14 +52,14 @@ def create_forecast_chart(df, x_col, y_cols, title):
         )
     
     fig.update_layout(
-        title={
-            'text': title,
-            'y':0.98,
-            'x':0.5,
-            'xanchor': 'center',
-            'yanchor': 'top',
-            'font': dict(size=20, family='Inter, sans-serif', color="#111827")
-        },
+        # title={
+        #     'text': title,
+        #     'y':0.98,
+        #     'x':0.5,
+        #     'xanchor': 'center',
+        #     'yanchor': 'top',
+        #     'font': dict(size=20, family='Inter, sans-serif', color="#111827")
+        # },
         xaxis_title=None,
         yaxis_title="Demand",
         legend={
@@ -106,7 +71,7 @@ def create_forecast_chart(df, x_col, y_cols, title):
         },
         plot_bgcolor='rgba(250,250,250,0.9)',
         paper_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=0, r=0, t=60, b=60),
+        margin=dict(l=0, r=0, t=0, b=60),
         hovermode="x unified",
         font=dict(family='Inter, sans-serif'),
     )
@@ -151,7 +116,7 @@ if uploaded_file:
             "Combined": future_df["Combined"].tolist()
         }
 
-        tab1, tab2, tab3 = st.tabs(["Results", "In-Sample Analysis", "Future Forecast"])
+        tab1, tab2, tab3 = st.tabs(["📊Results", "📈In-Sample Analysis", "⏩Future Forecast"])
 
         with tab1:
             result_df = pd.DataFrame({
@@ -159,12 +124,14 @@ if uploaded_file:
             })
             st.dataframe(result_df, use_container_width=True, hide_index=True)
         with tab2:
+            st.markdown("<h3 style='text-align: center;'>In-Sample Fit Comparison</h3>", unsafe_allow_html=True)
             insample_df = pd.DataFrame(insample)
             x_cols = "Month"
             y_cols = ["Actual", "SARIMA", "Prophet", "Holt_Winters", "Combined"]
             insample_fig = create_forecast_chart(insample_df, x_cols, y_cols, "In-Sample Fit Comparison")
             st.plotly_chart(insample_fig, use_container_width=True)
         with tab3:
+            st.markdown("<h3 style='text-align: center;'>Future Forecast Comparison</h3>", unsafe_allow_html=True)
             future_df = pd.DataFrame(future)
             x_cols = "Month"
             y_cols = ["SARIMA", "Prophet", "Holt_Winters", "Combined"]
