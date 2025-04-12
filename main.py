@@ -168,7 +168,7 @@ if uploaded_file:
             future_df = pd.DataFrame(future)
             x_cols = "Month"
             y_cols = ["SARIMA", "Prophet", "Holt_Winters", "Combined"]
-            forecast_fig = create_forecast_chart(insample_df, x_cols, y_cols, "Future Forecast Comparison")
+            forecast_fig = create_forecast_chart(future_df, x_cols, y_cols, "Future Forecast Comparison")
             st.plotly_chart(forecast_fig, use_container_width=True)
         
     except Exception as e:
